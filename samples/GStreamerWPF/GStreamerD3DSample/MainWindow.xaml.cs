@@ -24,7 +24,7 @@ namespace GStreamerD3D.Samples.WPF.D3D11
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
-        {      
+        {
             if (_enableOverlay)
             {
                 _d3DImageEx = new D3DImageEx();
@@ -35,6 +35,8 @@ namespace GStreamerD3D.Samples.WPF.D3D11
                 var renderTarget = _D3D11Scene.GetRenderTarget();
                 _d3DImageEx.SetBackBufferEx(D3DResourceTypeEx.ID3D11Texture2D, renderTarget);
 
+                // REVIEW: I don't think this is needed, d3d11videosink element will
+                // draw on texture
                 CompositionTarget.Rendering += CompositionTarget_Rendering;
 
                 Playback playback = new Playback(renderTarget, _enableOverlay);
@@ -45,10 +47,13 @@ namespace GStreamerD3D.Samples.WPF.D3D11
                 var windowHandle = new WindowInteropHelper(System.Windows.Application.Current.MainWindow).Handle;
                 Playback playback = new Playback(windowHandle, _enableOverlay);
             }
-        }       
+        }
         private void VideoSink_OnBeginDraw(Element sink, GLib.SignalArgs args)
         {
             Dispatcher.Invoke(() => _d3DImageEx.Lock());
+
+            // REVIEW: You need to pass a pointer to HANDLE, not ID3D11Texture
+            // it should be IntPtr returned by GetSharedHandle()
             var renderTarget = _D3D11Scene.GetRenderTarget();
             _ = sink.Emit("draw", renderTarget, (UInt32)2, (UInt64)0, (UInt64)0);
 
@@ -63,6 +68,7 @@ namespace GStreamerD3D.Samples.WPF.D3D11
         /// </summary>
         private void InvalidateD3DImage()
         {
+            // REVIEW: _d3DImageEx seems to be locked already in VideoSink_OnBeginDraw
             _d3DImageEx.Lock();
             _d3DImageEx.AddDirtyRect(new Int32Rect()
             {
@@ -73,6 +79,8 @@ namespace GStreamerD3D.Samples.WPF.D3D11
             });
             _d3DImageEx.Unlock();
         }
+
+        // REVIEW: not required
         private void CompositionTarget_Rendering(object sender, EventArgs e)
         {
             /* Render D3D10 test scene */

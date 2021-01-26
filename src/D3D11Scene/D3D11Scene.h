@@ -35,7 +35,7 @@ using namespace System;
 //	{ D3DXVECTOR3( -0.5f,   0.5f, 0), D3DXVECTOR2(0.0f, 0.0f) },
 //};
 
-//USHORT INDEX_DATA[] = 
+//USHORT INDEX_DATA[] =
 //{
 //    0, 1, 2, 0, 2, 3
 //};
@@ -43,6 +43,7 @@ using namespace System;
 //float ClearColor[4] = { 0, 0, 0, 0};
 
 namespace D3D11Scene {
+	// REVIEW: this Vertext data is not needed
 	typedef struct
 	{
 		struct {
@@ -61,7 +62,7 @@ namespace D3D11Scene {
 	public:
 		HANDLE sharedHandle;
 		D3D11TestScene()
-		{		
+		{
 			HRESULT hr;
 			ID3D11SamplerState* sampler;
 			ID3D11PixelShader* ps;
@@ -71,7 +72,7 @@ namespace D3D11Scene {
 			ID3D11Buffer* index;
 
 			SetFlags();
-			SetFormat();	
+			SetFormat();
 
 			sharedTexture = NULL;
 			renderTargetView = NULL;
@@ -81,11 +82,12 @@ namespace D3D11Scene {
 			hr = PrepareShader(&sampler, &ps, &vs, &layout, &vertex, &index);
 			hr = PrepareSharedTexture(width, height,format, miscFlags);
 			CreateGeometry(sampler, ps, vs, layout, vertex, index);
-		
+
 		}
-	
+
 		void SetFlags();
-		void SetFormat();		
+		void SetFormat();
+		// REVIEW: HANDLE should be IntPtr, not Int32
 		Int32 GetSharedHandle();
 		IntPtr GetRenderTarget();
 		void Render();
@@ -94,7 +96,8 @@ namespace D3D11Scene {
 	private:
 		ID3D11Device*              device;
 		ID3D11Texture2D*			sharedTexture;
-		ID3D11RenderTargetView*		renderTargetView;  
+		// REVIEW: You don't need ID3D11RenderTargetView
+		ID3D11RenderTargetView*		renderTargetView;
 		IDXGIFactory2* factory;
 		ID3D11DeviceContext* context;
 		IDXGIKeyedMutex* keyedMutex;
@@ -103,10 +106,12 @@ namespace D3D11Scene {
 		UINT width = 640;
 		UINT height = 480;
 		static char* textureFormat = nullptr;
+		// REVIEW: For D3D9 interop, NT handle + keyed-mutex combination is not need
+		// and not supported
 		static bool useNtHandle = FALSE;
 		static bool useKeyedMutex = FALSE;
 
-	private:		
+	private:
 
 		HRESULT	PrepareShader(ID3D11SamplerState** sampler, ID3D11PixelShader** ps,
 			ID3D11VertexShader** vs, ID3D11InputLayout** layout,

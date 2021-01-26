@@ -36,6 +36,7 @@ namespace D3D11Scene {
 		}
 	}
 
+	// REVIEW: IntPtr
 	Int32 D3D11TestScene::GetSharedHandle()
 	{
 		Int32 handle = (Int32)sharedHandle;
@@ -47,6 +48,7 @@ namespace D3D11Scene {
 		return IntPtr(sharedTexture);
 	}
 
+	// REVIEW: This method is not needed
 	void D3D11TestScene::Render()
 	{
 		ID3D11RenderTargetView* pRenderTargetView;
@@ -65,6 +67,7 @@ namespace D3D11Scene {
 		context->Flush();
 	}
 
+	// REVIEW: This method is not needed
 	void D3D11TestScene::OnResize()
 	{
 		D3D11_VIEWPORT viewport;
@@ -78,6 +81,7 @@ namespace D3D11Scene {
 		context->RSSetViewports(1, &viewport);
 	}
 
+	// REVIEW: This method is not needed
 	HRESULT	D3D11TestScene::PrepareShader(ID3D11SamplerState** sampler, ID3D11PixelShader** ps,
 		ID3D11VertexShader** vs, ID3D11InputLayout** layout,
 		ID3D11Buffer** vertex, ID3D11Buffer** index)
@@ -392,6 +396,7 @@ namespace D3D11Scene {
 		return hr;
 	}
 
+	// REVIEW: This method is not needed
 	void D3D11TestScene::CreateGeometry(ID3D11SamplerState* sampler, ID3D11PixelShader* ps,
 		ID3D11VertexShader* vs, ID3D11InputLayout* layout,
 		ID3D11Buffer* vertex, ID3D11Buffer* index)
@@ -409,6 +414,8 @@ namespace D3D11Scene {
 		context->VSSetShader(vs, nullptr, 0);
 		context->PSSetShader(ps, nullptr, 0);
 	}
+
+	// REVIEW: This method is not needed
 	HRESULT D3D11TestScene::CompileD3D(const char* source, bool isPixelShader, ID3DBlob** code)
 	{
 		HRESULT hr;
