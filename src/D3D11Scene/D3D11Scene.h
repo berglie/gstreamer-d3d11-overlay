@@ -21,45 +21,10 @@ using namespace System;
 #define G_N_ELEMENTS(arr)		(sizeof (arr) / sizeof ((arr)[0]))
 #define CHECK_STR_NULL(str) ((str) ? (str) : "(NULL)")
 
-//struct SimpleVertex
-//{
-//    D3DXVECTOR3 Pos;
-//    D3DXVECTOR2 Tex;
-//};
-//
-//SimpleVertex VERTEX_DATA[] =
-//{
-//    { D3DXVECTOR3(  0.5f,   0.5f, 0), D3DXVECTOR2(1.0f, 0.0f) },
-//    { D3DXVECTOR3(  0.5f,  -0.5f, 0), D3DXVECTOR2(1.0f, 1.0f) },
-//    { D3DXVECTOR3( -0.5f,  -0.5f, 0), D3DXVECTOR2(0.0f, 1.0f) },
-//	{ D3DXVECTOR3( -0.5f,   0.5f, 0), D3DXVECTOR2(0.0f, 0.0f) },
-//};
-
-//USHORT INDEX_DATA[] = 
-//{
-//    0, 1, 2, 0, 2, 3
-//};
-//
-//float ClearColor[4] = { 0, 0, 0, 0};
-
 namespace D3D11Scene {
-	typedef struct
-	{
-		struct {
-			FLOAT x;
-			FLOAT y;
-			FLOAT z;
-		} position;
-		struct {
-			FLOAT x;
-			FLOAT y;
-		} texture;
-	} VertexData;
-
 	public ref class D3D11TestScene
 	{
-	public:
-		HANDLE sharedHandle;
+	public:		
 		D3D11TestScene()
 		{		
 			HRESULT hr;
@@ -70,31 +35,20 @@ namespace D3D11Scene {
 			ID3D11Buffer* vertex;
 			ID3D11Buffer* index;
 
-			SetFlags();
-			SetFormat();	
+			miscFlags = D3D11_RESOURCE_MISC_SHARED;
+			format = DXGI_FORMAT_B8G8R8A8_UNORM;
 
 			sharedTexture = NULL;
-			renderTargetView = NULL;
 
 			hr = PrepareD3d11Device();
-			OnResize();
-			hr = PrepareShader(&sampler, &ps, &vs, &layout, &vertex, &index);
-			hr = PrepareSharedTexture(width, height,format, miscFlags);
-			CreateGeometry(sampler, ps, vs, layout, vertex, index);
+			hr = PrepareSharedTexture(width, height,format, miscFlags);		
+		}	
 		
-		}
-	
-		void SetFlags();
-		void SetFormat();		
-		Int32 GetSharedHandle();
 		IntPtr GetRenderTarget();
-		void Render();
-		void OnResize();
 
 	private:
 		ID3D11Device*              device;
 		ID3D11Texture2D*			sharedTexture;
-		ID3D11RenderTargetView*		renderTargetView;  
 		IDXGIFactory2* factory;
 		ID3D11DeviceContext* context;
 		IDXGIKeyedMutex* keyedMutex;
@@ -103,19 +57,9 @@ namespace D3D11Scene {
 		UINT width = 640;
 		UINT height = 480;
 		static char* textureFormat = nullptr;
-		static bool useNtHandle = FALSE;
-		static bool useKeyedMutex = FALSE;
 
 	private:		
-
-		HRESULT	PrepareShader(ID3D11SamplerState** sampler, ID3D11PixelShader** ps,
-			ID3D11VertexShader** vs, ID3D11InputLayout** layout,
-			ID3D11Buffer** vertex, ID3D11Buffer** index);
 		HRESULT PrepareSharedTexture(unsigned int width, unsigned int height, DXGI_FORMAT format, UINT miscFlags);
 		HRESULT PrepareD3d11Device();
-		HRESULT CompileD3D(const char* source, bool isPixelShader, ID3DBlob** code);
-		void CreateGeometry(ID3D11SamplerState* sampler, ID3D11PixelShader* ps,
-			ID3D11VertexShader* vs, ID3D11InputLayout* layout,
-			ID3D11Buffer* vertex, ID3D11Buffer* index);
 	};
 }

@@ -30,7 +30,7 @@ namespace System { namespace Windows { namespace Interop
 		}
 	public:
 		void SetBackBufferEx(D3DResourceTypeEx resourceType, IntPtr pResource);
-		UINT32 GetSharedHandle();
+		IntPtr GetSharedHandle();
 
 	private:
 		static IDirect3D9Ex*               m_D3D9;

@@ -143,10 +143,9 @@ namespace System { namespace Windows { namespace Interop
 
 		return hr;
 	}
-	UInt32 D3DImageEx::GetSharedHandle()
+	IntPtr D3DImageEx::GetSharedHandle()
 	{
-		Int32 handle = (Int32)sharedHandle;
-		return handle;
+		return (IntPtr)sharedHandle;
 	}
 	HRESULT D3DImageEx::GetSharedHandle(IUnknown *pUnknown, HANDLE * pHandle)
 	{
@@ -161,7 +160,6 @@ namespace System { namespace Windows { namespace Interop
 		hr = pSurface->GetSharedHandle(pHandle);
 		pSurface->Release();
 
-		sharedHandle = pHandle;
 		return hr;
 	}
 
