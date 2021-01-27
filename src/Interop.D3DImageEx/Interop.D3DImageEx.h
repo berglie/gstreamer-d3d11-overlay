@@ -24,26 +24,17 @@ namespace System { namespace Windows { namespace Interop
 
 	public ref class D3DImageEx : D3DImage
 	{
-		static D3DImageEx()
-		{
-			InitD3D9(GetDesktopWindow());
-		}
+		static D3DImageEx();
 	public:
 		void SetBackBufferEx(D3DResourceTypeEx resourceType, IntPtr pResource);
-		UINT32 GetSharedHandle();
 
 	private:
 		static IDirect3D9Ex*               m_D3D9;
 		static IDirect3DDevice9Ex*         m_D3D9Device;
-		static HANDLE* sharedHandle;
-		
-	private:
+
 		static D3DFORMAT ConvertDXGIToD3D9Format(DXGI_FORMAT format);
-
 		static HRESULT GetSharedSurface(HANDLE hSharedHandle, void** ppUnknown, UINT width, UINT height, DXGI_FORMAT format);
-
 		static HRESULT GetSharedHandle(IUnknown *pUnknown, HANDLE * pHandle);
-
 		static HRESULT InitD3D9(HWND hWnd);
 	};
 }}}

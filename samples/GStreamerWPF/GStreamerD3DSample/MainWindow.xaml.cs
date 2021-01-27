@@ -24,7 +24,7 @@ namespace GStreamerD3D.Samples.WPF.D3D11
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
-        {      
+        {
             if (_enableOverlay)
             {
                 _d3DImageEx = new D3DImageEx();
@@ -34,8 +34,6 @@ namespace GStreamerD3D.Samples.WPF.D3D11
                 /* Set the backbuffer, which is a ID3D11Texture2D pointer */
                 var renderTarget = _D3D11Scene.GetRenderTarget();
                 _d3DImageEx.SetBackBufferEx(D3DResourceTypeEx.ID3D11Texture2D, renderTarget);
-
-                CompositionTarget.Rendering += CompositionTarget_Rendering;
 
                 Playback playback = new Playback(renderTarget, _enableOverlay);
                 playback.OnDrawSignalReceived += VideoSink_OnBeginDraw;
@@ -48,15 +46,11 @@ namespace GStreamerD3D.Samples.WPF.D3D11
         }       
         private void VideoSink_OnBeginDraw(Element sink, GLib.SignalArgs args)
         {
-            Dispatcher.Invoke(() => _d3DImageEx.Lock());
-            var renderTarget = _D3D11Scene.GetRenderTarget();
-            _ = sink.Emit("draw", renderTarget, (UInt32)2, (UInt64)0, (UInt64)0);
+        
+            var sharedHandle = _D3D11Scene.GetSharedHandle();
+            _ = sink.Emit("draw", sharedHandle, (UInt32)2, (UInt64)0, (UInt64)0);
 
-            Dispatcher.Invoke(() =>
-            {
-                 InvalidateD3DImage();
-                _d3DImageEx.Unlock();
-            });
+            Dispatcher.Invoke(() => InvalidateD3DImage());
         }
         /// <summary>
         /// Invalidates entire D3DImage area
@@ -72,14 +66,6 @@ namespace GStreamerD3D.Samples.WPF.D3D11
                 Width = _d3DImageEx.PixelWidth
             });
             _d3DImageEx.Unlock();
-        }
-        private void CompositionTarget_Rendering(object sender, EventArgs e)
-        {
-            /* Render D3D10 test scene */
-            _D3D11Scene.Render();
-
-            /* Invalidate our D3DImage */
-            InvalidateD3DImage();
         }
     }
 }
