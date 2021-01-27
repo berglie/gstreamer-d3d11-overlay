@@ -276,6 +276,10 @@ namespace GStreamerD3D.Samples.WPF.D3D11
 							debug = "none";
 						}
 						Log($"Error! Bus message: {debug}", LogLevelFlags.Error, err);
+						if (err.Message == "Output window was closed") // Let dispatcher handle this event
+						{
+							Environment.Exit(0);
+						}
 						break;
 				}
 
