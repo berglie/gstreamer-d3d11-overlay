@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using GLib;
 using Gst;
 using Gst.Video;
@@ -13,11 +14,14 @@ namespace GStreamerD3D.Samples.WPF.D3D11
 		public delegate void OnDrawReceivedEventHandler(Element videoSink, GLib.SignalArgs args);
 
 		private Pipeline _pipeline;
+		private MainLoop _mainLoop;
 		private Element _uriDecodeBin, _audioConvert, _videoConvert;
 		private Element _audioSink, _videoSink;
 		private IntPtr _handle;
 
 		private const bool _enableAudio = false;
+		private const string _videoDecoder = "d3d11h264dec"; // This decoder will reduce CPU usage significantly
+
 		private bool _enableOverlay = false;
 		private string _source = "http://samples.mplayerhq.hu/V-codecs/h264/interlaced_crop.mp4";
 
@@ -46,8 +50,8 @@ namespace GStreamerD3D.Samples.WPF.D3D11
 		{
 			Gst.Application.Init();
 			GtkSharp.GstreamerSharp.ObjectManager.Initialize();
-			var mainLoop = new MainLoop();
-			var mainGlibThread = new Thread(mainLoop.Run);
+			_mainLoop = new MainLoop();
+			var mainGlibThread = new Thread(_mainLoop.Run);
 			mainGlibThread.Start();
 		}
 
@@ -90,7 +94,7 @@ namespace GStreamerD3D.Samples.WPF.D3D11
 			}
 		}
 
-		private void OnPadAdded(object sender, PadAddedArgs args)
+        private void OnPadAdded(object sender, PadAddedArgs args)
 		{
 			var src = (Element)sender;
 			var newPad = args.NewPad;
@@ -177,7 +181,30 @@ namespace GStreamerD3D.Samples.WPF.D3D11
 			overlay?.Dispose();
 			src?.Dispose();
 		}
+		private static bool FilterVisFeatures(PluginFeature feature)
+		{
+			if (!(feature is ElementFactory))
+				return false;
 
+			var factory = (ElementFactory)feature;
+
+			return (factory.GetMetadata(Gst.Constants.ELEMENT_METADATA_KLASS).ToLower().Contains("codec/decoder")) || (factory.GetMetadata(Gst.Constants.ELEMENT_METADATA_KLASS).ToLower().Contains("sink/video"));
+		}
+		private void SetPrimaryDecoder(string decoderName)
+        {
+			var registry = Gst.Registry.Get();
+			var pluginList = registry.FeatureFilter(FilterVisFeatures, false);
+			// First we find the current primary decoders
+			var primaryPlugins = pluginList.Where(plugin => plugin.Rank == (uint)Rank.Primary);
+			// And then downrank them 
+			foreach (var plugin in primaryPlugins)
+			{
+				--plugin.Rank;
+			}
+			// Then we set our plugin to the primary rank
+			PluginFeature d3d11Plugin = pluginList.FirstOrDefault(plugin => plugin.Name == decoderName);
+			d3d11Plugin.Rank = (uint)Rank.Primary;
+		}
 		protected bool CreateElements()
 		{
 			try
@@ -188,6 +215,8 @@ namespace GStreamerD3D.Samples.WPF.D3D11
 					_videoSink["draw-on-shared-texture"] = true;
 					_videoSink.Connect("begin-draw", VideoSink_OnBeginDraw);
 				}
+
+				SetPrimaryDecoder(_videoDecoder);
 
 				_videoConvert = ElementFactory.Make("videoconvert", "videoconvert0");
 
@@ -248,6 +277,10 @@ namespace GStreamerD3D.Samples.WPF.D3D11
 							debug = "none";
 						}
 						Log($"Error! Bus message: {debug}", LogLevelFlags.Error, err);
+						if (err.Code == 3)
+						{
+							System.Windows.Application.Current.Dispatcher.InvokeShutdown();
+						}
 						break;
 				}
 
@@ -300,6 +333,18 @@ namespace GStreamerD3D.Samples.WPF.D3D11
 				_log.Error($"Log error: {ex.Message}", ex);
 			}
 		}
-
+		internal void Cleanup()
+		{
+			try
+			{
+				_pipeline?.SetState(State.Null);
+				_pipeline?.Dispose();
+				_mainLoop?.Quit();
+			}
+			catch (Exception ex)
+			{
+				Log("Failed to cleanup resources", LogLevelFlags.Error, ex);
+			}
+		}
 	}
 }

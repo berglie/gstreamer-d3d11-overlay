@@ -14,9 +14,10 @@ namespace GStreamerD3D.Samples.WPF.D3D11
     {
         private D3DImageEx _d3DImageEx;
         private D3D11TestScene _D3D11Scene;
+        private Playback _playback;
 
-        private const bool _enableOverlay = false;
-
+        private const bool _enableOverlay = true;
+     
         public MainWindow()
         {
             InitializeComponent();
@@ -35,13 +36,13 @@ namespace GStreamerD3D.Samples.WPF.D3D11
                 var renderTarget = _D3D11Scene.GetRenderTarget();
                 _d3DImageEx.SetBackBufferEx(D3DResourceTypeEx.ID3D11Texture2D, renderTarget);
 
-                Playback playback = new Playback(renderTarget, _enableOverlay);
-                playback.OnDrawSignalReceived += VideoSink_OnBeginDraw;
+                _playback = new Playback(renderTarget, _enableOverlay);
+                _playback.OnDrawSignalReceived += VideoSink_OnBeginDraw;
             }
             else
             {
                 var windowHandle = new WindowInteropHelper(System.Windows.Application.Current.MainWindow).Handle;
-                Playback playback = new Playback(windowHandle, _enableOverlay);
+                _playback = new Playback(windowHandle, _enableOverlay);
             }
         }       
         private void VideoSink_OnBeginDraw(Element sink, GLib.SignalArgs args)
@@ -66,6 +67,13 @@ namespace GStreamerD3D.Samples.WPF.D3D11
                 Width = _d3DImageEx.PixelWidth
             });
             _d3DImageEx.Unlock();
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            base.OnClosed(e);
+            _playback.Cleanup();
+            System.Windows.Application.Current.Shutdown();
         }
     }
 }
