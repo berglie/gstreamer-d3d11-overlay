@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using GLib;
 using Gst;
 using Gst.Video;
@@ -18,6 +19,8 @@ namespace GStreamerD3D.Samples.WPF.D3D11
 		private IntPtr _handle;
 
 		private const bool _enableAudio = false;
+		private const string _videoDecoder = "d3d11h264dec"; // This decoder will reduce CPU usage significantly
+
 		private bool _enableOverlay = false;
 		private string _source = "http://samples.mplayerhq.hu/V-codecs/h264/interlaced_crop.mp4";
 
@@ -177,7 +180,30 @@ namespace GStreamerD3D.Samples.WPF.D3D11
 			overlay?.Dispose();
 			src?.Dispose();
 		}
+		private static bool FilterVisFeatures(PluginFeature feature)
+		{
+			if (!(feature is ElementFactory))
+				return false;
 
+			var factory = (ElementFactory)feature;
+
+			return (factory.GetMetadata(Gst.Constants.ELEMENT_METADATA_KLASS).ToLower().Contains("codec/decoder")) || (factory.GetMetadata(Gst.Constants.ELEMENT_METADATA_KLASS).ToLower().Contains("sink/video"));
+		}
+		private void SetPrimaryDecoder(string decoderName)
+        {
+			var registry = Gst.Registry.Get();
+			var pluginList = registry.FeatureFilter(FilterVisFeatures, false);
+			// First we find the current primary decoders
+			var primaryPlugins = pluginList.Where(plugin => plugin.Rank == (uint)Rank.Primary);
+			// And then downrank them 
+			foreach (var plugin in primaryPlugins)
+			{
+				--plugin.Rank;
+			}
+			// Then we set our plugin to the primary rank
+			PluginFeature d3d11Plugin = pluginList.FirstOrDefault(plugin => plugin.Name == decoderName);
+			d3d11Plugin.Rank = (uint)Rank.Primary;
+		}
 		protected bool CreateElements()
 		{
 			try
@@ -188,6 +214,8 @@ namespace GStreamerD3D.Samples.WPF.D3D11
 					_videoSink["draw-on-shared-texture"] = true;
 					_videoSink.Connect("begin-draw", VideoSink_OnBeginDraw);
 				}
+
+				SetPrimaryDecoder(_videoDecoder);
 
 				_videoConvert = ElementFactory.Make("videoconvert", "videoconvert0");
 
