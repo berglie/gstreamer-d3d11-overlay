@@ -1,13 +1,20 @@
 # gstreamer-d3d11-overlay
-An RTSP WPF client using GStreamer with Direct3D11/Direct3D9 interop layer
-
-[GStreamer](https://gstreamer.freedesktop.org/documentation/?gi-language=c) is a framework used for creating streaming media applications. In this project we are creating a player which can play RTSP streams in WPF. 
+Using GStreamer with Direct3D11/Direct3D9 interop layer in .Net
 
 There is no direct support in WPF to display UI elements over a D3D component due to the airspace issue. This project will tackle this issue by implementing a Direct3D11/Direct3D9 interop layer and by using the D3DImageEx class. 
 
 The D3DImageEx class will create a D3D11Texture which is created with the `D3D11_RESOURCE_MISC_SHARED`. This texture will be used for the SetBackBuffer method and later used for the d3d11videosink element in the gstreamer code. 
+Sample project
 
-Building the C++ projects
+Sample project
+-----------------------------
+[GStreamer](https://gstreamer.freedesktop.org/documentation/?gi-language=c) is a framework used for creating streaming media applications. In the sample project included in this repository we are creating a player which can play RTSP streams in WPF with a textbox overlay. 
+
+Using the NuGet package
+-----------------------------
+Download the NuGet package from https://www.nuget.org/packages/gstreamer-d3d11-overlay/
+
+Using the native C++ projects
 ------------------------------
 **What You Need**
 
