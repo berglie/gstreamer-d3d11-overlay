@@ -15,7 +15,7 @@ namespace GStreamerD3D.Samples.WPF.D3D11
         private D3DImageEx _d3DImageEx;
         private D3D11TestScene _D3D11Scene;
 
-        private const bool _enableOverlay = true;
+        private const bool _enableOverlay = false;
 
         public MainWindow()
         {
@@ -50,7 +50,7 @@ namespace GStreamerD3D.Samples.WPF.D3D11
             var sharedHandle = _D3D11Scene.GetSharedHandle();
             _ = sink.Emit("draw", sharedHandle, (UInt32)2, (UInt64)0, (UInt64)0);
 
-            Dispatcher.Invoke(() => InvalidateD3DImage());
+            Dispatcher.BeginInvoke( System.Windows.Threading.DispatcherPriority.Background, (Action)(() => InvalidateD3DImage()));
         }
         /// <summary>
         /// Invalidates entire D3DImage area
