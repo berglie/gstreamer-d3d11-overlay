@@ -1,265 +1,38 @@
 // This is the main DLL file.
 
 #include "stdafx.h"
-
 #include "D3D11Scene.h"
 
 namespace D3D11Scene {
 
-	void D3D11TestScene::SetFlags()
+	D3D11TestScene::D3D11TestScene()
 	{
-		/* NT handle needs to be used with keyed mutex */
-		if (useNtHandle) {
-			miscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
-		}
-		else if (useKeyedMutex) {
-			miscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
-		}
-		else {
-			miscFlags = D3D11_RESOURCE_MISC_SHARED;
-		}
+		HRESULT hr;
+		ID3D11SamplerState* sampler;
+		ID3D11PixelShader* ps;
+		ID3D11VertexShader* vs;
+		ID3D11InputLayout* layout;
+		ID3D11Buffer* vertex;
+		ID3D11Buffer* index;
+
+		miscFlags = D3D11_RESOURCE_MISC_SHARED;
+		format = DXGI_FORMAT_B8G8R8A8_UNORM;
+
+		sharedTexture = NULL;
+
+		hr = PrepareD3d11Device();
+		hr = PrepareSharedTexture(width, height, format, miscFlags);
 	}
 
-	void D3D11TestScene::SetFormat()
+	IntPtr D3D11TestScene::GetSharedHandle()
 	{
-		if (textureFormat != "RGBA") {
-			printf("Use DXGI_FORMAT_R8G8B8A8_UNORM (RGBA) format");
-			format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		}
-		else if (textureFormat != "RGB10A2_LE") {
-			printf("Use DXGI_FORMAT_R10G10B10A2_UNORM (RGB10A2_LE) format");
-			format = DXGI_FORMAT_R10G10B10A2_UNORM;
-		}
-		else {
-			printf("Use DXGI_FORMAT_B8G8R8A8_UNORM format");
-			format = DXGI_FORMAT_B8G8R8A8_UNORM;
-		}
-	}
-
-	Int32 D3D11TestScene::GetSharedHandle()
-	{
-		Int32 handle = (Int32)sharedHandle;
-		return handle;
+		return (IntPtr)sharedHandle;
 	}
 
 	IntPtr D3D11TestScene::GetRenderTarget()
 	{
 		return IntPtr(sharedTexture);
-	}
-
-	void D3D11TestScene::Render()
-	{
-		ID3D11RenderTargetView* pRenderTargetView;
-		HRESULT hr = S_OK;
-
-		hr = device->CreateRenderTargetView(sharedTexture, NULL, &pRenderTargetView);
-		context->OMSetRenderTargets(1, &pRenderTargetView, NULL);
-		renderTargetView = pRenderTargetView;
-
-		context->DrawIndexed(6, 0, 0);
-
-		context->OMSetRenderTargets(0, 0, 0);
-		if (renderTargetView)
-			renderTargetView->Release();
-
-		context->Flush();
-	}
-
-	void D3D11TestScene::OnResize()
-	{
-		D3D11_VIEWPORT viewport;
-		viewport.TopLeftX = 0;
-		viewport.TopLeftY = 0;
-		viewport.Width = width;
-		viewport.Height = height;
-		viewport.MinDepth = 0.0f;
-		viewport.MaxDepth = 1.0f;
-
-		context->RSSetViewports(1, &viewport);
-	}
-
-	HRESULT	D3D11TestScene::PrepareShader(ID3D11SamplerState** sampler, ID3D11PixelShader** ps,
-		ID3D11VertexShader** vs, ID3D11InputLayout** layout,
-		ID3D11Buffer** vertex, ID3D11Buffer** index)
-	{
-		static const char psCode[] =
-			"Texture2D shaderTexture;\n"
-			"SamplerState samplerState;\n"
-			"\n"
-			"struct PS_INPUT\n"
-			"{\n"
-			"  float4 Position: SV_POSITION;\n"
-			"  float3 Texture: TEXCOORD0;\n"
-			"};\n"
-			"\n"
-			"struct PS_OUTPUT\n"
-			"{\n"
-			"  float4 Plane: SV_Target;\n"
-			"};\n"
-			"\n"
-			"PS_OUTPUT main(PS_INPUT input)\n"
-			"{\n"
-			"  PS_OUTPUT output;\n"
-			"  output.Plane = shaderTexture.Sample(samplerState, input.Texture);\n"
-			"  return output;\n"
-			"}\n";
-
-		static const char vsCode[] =
-			"struct VS_INPUT\n"
-			"{\n"
-			"  float4 Position : POSITION;\n"
-			"  float4 Texture : TEXCOORD0;\n"
-			"};\n"
-			"\n"
-			"struct VS_OUTPUT\n"
-			"{\n"
-			"  float4 Position: SV_POSITION;\n"
-			"  float4 Texture: TEXCOORD0;\n"
-			"};\n"
-			"\n"
-			"VS_OUTPUT main(VS_INPUT input)\n"
-			"{\n"
-			"  return input;\n"
-			"}\n";
-
-		D3D11_SAMPLER_DESC samplerDesc = {  };
-		samplerDesc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-		samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
-		samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
-		samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
-		samplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
-		samplerDesc.MinLOD = 0;
-		samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
-
-		ID3D11SamplerState* sampler_state;
-		HRESULT hr = device->CreateSamplerState(&samplerDesc, &sampler_state);
-		if (FAILED(hr)) {
-			printf("Couldn't create ID3D11SamplerState");
-			return hr;
-		}
-
-		ID3DBlob* code;
-		hr = CompileD3D(psCode, TRUE, &code);
-		if (FAILED(hr))
-			return hr;
-
-		ID3D11PixelShader* pixelShader;
-		hr = device->CreatePixelShader(code->GetBufferPointer(),
-			code->GetBufferSize(), nullptr, &pixelShader);
-		if (FAILED(hr)) {
-			printf("Couldn't create ID3D11PixelShader");
-			return hr;
-		}
-
-		hr = CompileD3D(vsCode, FALSE, &code); //code.ReleaseAndGetAddressOf()
-		if (FAILED(hr))
-			return hr;
-
-		ID3D11VertexShader* vertexShader;
-		hr = device->CreateVertexShader(code->GetBufferPointer(),
-			code->GetBufferSize(), nullptr, &vertexShader);
-		if (FAILED(hr)) {
-			printf("Couldn't create ID3D11VertexShader");
-			return hr;
-		}
-
-		D3D11_INPUT_ELEMENT_DESC input_desc[] = {
-		  { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
-			  D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		  { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0,
-			  D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
-		};
-
-		ID3D11InputLayout* inputLayout;
-		hr = device->CreateInputLayout(input_desc, G_N_ELEMENTS(input_desc),
-			code->GetBufferPointer(), code->GetBufferSize(), &inputLayout);
-		if (FAILED(hr)) {
-			printf("Couldn't create ID3D11InputLayout");
-			return hr;
-		}
-
-		D3D11_BUFFER_DESC bufferDesc = { 0, };
-		bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-		bufferDesc.ByteWidth = sizeof(VertexData) * 4;
-		bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-
-		ID3D11Buffer* vertexBuffer;
-		hr = device->CreateBuffer(&bufferDesc, nullptr, &vertexBuffer);
-		if (FAILED(hr)) {
-			printf("Couldn't create ID3D11Buffer for vertex buffer");
-			return hr;
-		}
-
-		D3D11_MAPPED_SUBRESOURCE map;
-		hr = context->Map(vertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &map);
-		if (FAILED(hr)) {
-			printf("Couldn't map vertex buffer");
-			return hr;
-		}
-
-		VertexData* vertexData = (VertexData*)map.pData;
-		vertexData[0].position.x = -1.0f;
-		vertexData[0].position.y = -1.0f;
-		vertexData[0].position.z = 0.0f;
-		vertexData[0].texture.x = 0.0f;
-		vertexData[0].texture.y = 1.0f;
-
-		vertexData[1].position.x = -1.0f;
-		vertexData[1].position.y = 1.0f;
-		vertexData[1].position.z = 0.0f;
-		vertexData[1].texture.x = 0.0f;
-		vertexData[1].texture.y = 0.0f;
-
-		vertexData[2].position.x = 1.0f;
-		vertexData[2].position.y = 1.0f;
-		vertexData[2].position.z = 0.0f;
-		vertexData[2].texture.x = 1.0f;
-		vertexData[2].texture.y = 0.0f;
-
-		vertexData[3].position.x = 1.0f;
-		vertexData[3].position.y = -1.0f;
-		vertexData[3].position.z = 0.0f;
-		vertexData[3].texture.x = 1.0f;
-		vertexData[3].texture.y = 1.0f;
-
-		context->Unmap(vertexBuffer, 0);
-
-		ID3D11Buffer* indexBuffer;
-		bufferDesc.ByteWidth = sizeof(WORD) * 2 * 3;
-		bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-		hr = device->CreateBuffer(&bufferDesc, nullptr, &indexBuffer);
-		if (FAILED(hr)) {
-			printf("Couldn't create ID3D11Buffer for index buffer");
-			return hr;
-		}
-
-		hr = context->Map(indexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &map);
-		if (FAILED(hr)) {
-			printf("Couldn't map index buffer");
-			return hr;
-		}
-
-		WORD* indices = (WORD*)map.pData;
-		indices[0] = 0;
-		indices[1] = 1;
-		indices[2] = 2;
-
-		indices[3] = 3;
-		indices[4] = 0;
-		indices[5] = 2;
-
-		context->Unmap(indexBuffer, 0);
-
-		*sampler = sampler_state;
-		*ps = pixelShader;
-		*vs = vertexShader;
-		*layout = inputLayout;
-		*vertex = vertexBuffer;
-		*index = indexBuffer;
-
-		return S_OK;
-	}
+	}	
 
 	HRESULT D3D11TestScene::PrepareSharedTexture(unsigned int width, unsigned int height, DXGI_FORMAT format, UINT miscFlags)
 	{
@@ -323,7 +96,6 @@ namespace D3D11Scene {
 			printf("Couldn't get shared handle from texture");
 			return hr;
 		}
-
 		sharedHandle = handle;
 		sharedTexture = sharedTexture1;
 
@@ -390,50 +162,5 @@ namespace D3D11Scene {
 		context = deviceContext;
 		factory = factory2;
 		return hr;
-	}
-
-	void D3D11TestScene::CreateGeometry(ID3D11SamplerState* sampler, ID3D11PixelShader* ps,
-		ID3D11VertexShader* vs, ID3D11InputLayout* layout,
-		ID3D11Buffer* vertex, ID3D11Buffer* index)
-	{
-		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		context->IASetInputLayout(layout);
-		ID3D11Buffer* buf = vertex;
-		UINT offsets = 0;
-		UINT stride = sizeof(VertexData);
-		context->IASetVertexBuffers(0, 1, &buf, &stride, &offsets);
-		context->IASetIndexBuffer(index, DXGI_FORMAT_R16_UINT, 0);
-
-		ID3D11SamplerState* sampler_state = sampler;
-		context->PSSetSamplers(0, 1, &sampler_state);
-		context->VSSetShader(vs, nullptr, 0);
-		context->PSSetShader(ps, nullptr, 0);
-	}
-	HRESULT D3D11TestScene::CompileD3D(const char* source, bool isPixelShader, ID3DBlob** code)
-	{
-		HRESULT hr;
-		const char* shaderTarget = "ps_4_0";
-
-		if (!isPixelShader)
-			shaderTarget = "vs_4_0";
-
-		ID3DBlob* blob;
-		ID3DBlob* error;
-		hr = D3DCompile(source, strlen(source), nullptr, nullptr,
-			nullptr, "main", shaderTarget, 0, 0, &blob, &error);
-
-		if (FAILED(hr)) {
-			const char* err = nullptr;
-			if (error)
-				err = (const char*)error->GetBufferPointer();
-
-			printf("Couldn't compile pixel shader, error: %s",
-				CHECK_STR_NULL(err));
-			return hr;
-		}
-
-		*code = blob;
-
-		return S_OK;
-	}
+	}	
 }

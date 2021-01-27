@@ -3,6 +3,10 @@
 
 namespace System { namespace Windows { namespace Interop
 {
+	static D3DImageEx::D3DImageEx()
+	{
+		InitD3D9(GetDesktopWindow());
+	}
 	void D3DImageEx::SetBackBufferEx(D3DResourceTypeEx resourceType, IntPtr pResource)
 	{
 		/* Check if the user just wants to clear the D3DImage backbuffer */
@@ -143,11 +147,7 @@ namespace System { namespace Windows { namespace Interop
 
 		return hr;
 	}
-	UInt32 D3DImageEx::GetSharedHandle()
-	{
-		Int32 handle = (Int32)sharedHandle;
-		return handle;
-	}
+
 	HRESULT D3DImageEx::GetSharedHandle(IUnknown *pUnknown, HANDLE * pHandle)
 	{
 		HRESULT hr = S_OK;
@@ -161,7 +161,6 @@ namespace System { namespace Windows { namespace Interop
 		hr = pSurface->GetSharedHandle(pHandle);
 		pSurface->Release();
 
-		sharedHandle = pHandle;
 		return hr;
 	}
 
