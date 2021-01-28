@@ -38,6 +38,8 @@ namespace GStreamerD3D.Samples.WPF.D3D11
 
                 _playback = new Playback(renderTarget, _enableOverlay);
                 _playback.OnDrawSignalReceived += VideoSink_OnBeginDraw;
+
+                CompositionTarget.Rendering += CompositionTarget_Rendering;
             }
             else
             {
@@ -46,16 +48,14 @@ namespace GStreamerD3D.Samples.WPF.D3D11
             }
         }       
         private void VideoSink_OnBeginDraw(Element sink, GLib.SignalArgs args)
-        {
-        
+        {        
             var sharedHandle = _D3D11Scene.GetSharedHandle();
             _ = sink.Emit("draw", sharedHandle, (UInt32)2, (UInt64)0, (UInt64)0);
-
-            Dispatcher.BeginInvoke( System.Windows.Threading.DispatcherPriority.Background, (Action)(() => InvalidateD3DImage()));
         }
-        /// <summary>
-        /// Invalidates entire D3DImage area
-        /// </summary>
+        private void CompositionTarget_Rendering(object sender, EventArgs e)
+        {
+            InvalidateD3DImage();
+        }
         private void InvalidateD3DImage()
         {
             _d3DImageEx.Lock();
@@ -68,7 +68,6 @@ namespace GStreamerD3D.Samples.WPF.D3D11
             });
             _d3DImageEx.Unlock();
         }
-
         protected override void OnClosed(EventArgs e)
         {
             base.OnClosed(e);
