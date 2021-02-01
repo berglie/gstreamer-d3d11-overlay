@@ -17,7 +17,8 @@ namespace GStreamerD3D.Samples.WPF.D3D11
         private Playback _playback;
 
         private const bool _enableOverlay = true;
-     
+        private const bool _enableSoftwareFallback = true;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -34,7 +35,11 @@ namespace GStreamerD3D.Samples.WPF.D3D11
 
                 /* Set the backbuffer, which is a ID3D11Texture2D pointer */
                 var renderTarget = _D3D11Scene.GetRenderTarget();
-                _d3DImageEx.SetBackBufferEx(D3DResourceTypeEx.ID3D11Texture2D, renderTarget);
+                var backBuffer = _d3DImageEx.CreateBackBuffer(D3DResourceTypeEx.ID3D11Texture2D, renderTarget);
+
+                _d3DImageEx.Lock();
+                _d3DImageEx.SetBackBuffer(D3DResourceType.IDirect3DSurface9, backBuffer, _enableSoftwareFallback);
+                _d3DImageEx.Unlock();
 
                 _playback = new Playback(renderTarget, _enableOverlay);
                 _playback.OnDrawSignalReceived += VideoSink_OnBeginDraw;
@@ -46,7 +51,7 @@ namespace GStreamerD3D.Samples.WPF.D3D11
                 var windowHandle = new WindowInteropHelper(System.Windows.Application.Current.MainWindow).Handle;
                 _playback = new Playback(windowHandle, _enableOverlay);
             }
-        }       
+        }
         private void VideoSink_OnBeginDraw(Element sink, GLib.SignalArgs args)
         {        
             var sharedHandle = _D3D11Scene.GetSharedHandle();

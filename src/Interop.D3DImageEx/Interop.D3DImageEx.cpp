@@ -7,13 +7,12 @@ namespace System { namespace Windows { namespace Interop
 	{
 		InitD3D9(GetDesktopWindow());
 	}
-	void D3DImageEx::SetBackBufferEx(D3DResourceTypeEx resourceType, IntPtr pResource)
+	IntPtr D3DImageEx::CreateBackBuffer(D3DResourceTypeEx resourceType, IntPtr pResource)
 	{
 		/* Check if the user just wants to clear the D3DImage backbuffer */
 		if(pResource == IntPtr::Zero)
 		{
-			SetBackBuffer(D3DResourceType::IDirect3DSurface9, IntPtr::Zero);
-			return;
+			return IntPtr::Zero;
 		}
 
 		IUnknown *pUnk = (IUnknown*)pResource.ToPointer();
@@ -95,13 +94,15 @@ namespace System { namespace Windows { namespace Interop
 
 		/* Done with the texture */
 		pTexture->Release();
-		
-		Lock();
-		/* Set the backbuffer of the D3DImage */
-		SetBackBuffer(D3DResourceType::IDirect3DSurface9, IntPtr(pSurface));
-		Unlock();
 
-		pSurface->Release();
+		m_backBuffer = IntPtr(pSurface);
+
+		return m_backBuffer;
+	}
+	 
+	IntPtr D3DImageEx::GetBackbuffer()
+	{
+		return m_backBuffer;
 	}
 
 	D3DFORMAT D3DImageEx::ConvertDXGIToD3D9Format(DXGI_FORMAT format)
