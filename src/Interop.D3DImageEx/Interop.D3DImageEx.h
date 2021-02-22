@@ -1,14 +1,15 @@
 #pragma once
+
+#pragma  comment(lib, "d3d9.lib")
+
 #include <windows.h>
 
 #include <stdlib.h>
 #include <stdio.h>
 
 #include "d3d9.h"
-#include "d3dx9.h"
 #include "D3D11_1.h"
 #include <D3D11.h>
-#include "d3dx10.h"
 
 using namespace System;
 using namespace System::Windows::Interop;
