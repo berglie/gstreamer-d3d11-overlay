@@ -5,7 +5,7 @@
 
 namespace D3D11Scene {
 
-	D3D11TestScene::D3D11TestScene()
+	D3D11TestScene::D3D11TestScene(unsigned int width, unsigned int height)
 	{
 		HRESULT hr;
 		ID3D11SamplerState* sampler;
