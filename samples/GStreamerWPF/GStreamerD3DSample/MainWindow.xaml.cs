@@ -31,7 +31,7 @@ namespace GStreamerD3D.Samples.WPF.D3D11
             {
                 _d3DImageEx = new D3DImageEx();
                 d3dScene.Source = _d3DImageEx;
-                _D3D11Scene = new D3D11TestScene();
+                _D3D11Scene = new D3D11TestScene(1920, 1080);
 
                 /* Set the backbuffer, which is a ID3D11Texture2D pointer */
                 var renderTarget = _D3D11Scene.GetRenderTarget();

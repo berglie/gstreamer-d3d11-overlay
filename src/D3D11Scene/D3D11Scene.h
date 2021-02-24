@@ -17,7 +17,7 @@ namespace D3D11Scene {
 	public ref class D3D11TestScene
 	{
 	public:		
-		D3D11TestScene();
+		D3D11TestScene(unsigned int width, unsigned int height);
 		HANDLE sharedHandle;
 		IntPtr GetSharedHandle();
 		IntPtr GetRenderTarget();
@@ -30,8 +30,6 @@ namespace D3D11Scene {
 		IDXGIKeyedMutex* keyedMutex;
 		DXGI_FORMAT format = DXGI_FORMAT_B8G8R8A8_UNORM;
 		UINT miscFlags = 0;
-		UINT width = 1280;
-		UINT height = 720;
 		static char* textureFormat = nullptr;
 
 	private:		
