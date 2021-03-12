@@ -7,10 +7,7 @@ using Gst;
 
 namespace GStreamerD3D.Samples.WPF.D3D11
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow : Window, IDisposable
     {
         private D3DImageEx _d3DImageEx;
         private D3D11TestScene _D3D11Scene;
@@ -30,8 +27,9 @@ namespace GStreamerD3D.Samples.WPF.D3D11
             if (_enableOverlay)
             {
                 _d3DImageEx = new D3DImageEx();
-                d3dScene.Source = _d3DImageEx;
                 _D3D11Scene = new D3D11TestScene(1920, 1080);
+
+                d3dScene.Source = _d3DImageEx;
 
                 /* Set the backbuffer, which is a ID3D11Texture2D pointer */
                 var renderTarget = _D3D11Scene.GetRenderTarget();
@@ -41,7 +39,7 @@ namespace GStreamerD3D.Samples.WPF.D3D11
                 _d3DImageEx.SetBackBuffer(D3DResourceType.IDirect3DSurface9, backBuffer, _enableSoftwareFallback);
                 _d3DImageEx.Unlock();
 
-                _playback = new Playback(renderTarget, _enableOverlay);
+                _playback = new Playback(IntPtr.Zero, _enableOverlay);
                 _playback.OnDrawSignalReceived += VideoSink_OnBeginDraw;
 
                 CompositionTarget.Rendering += CompositionTarget_Rendering;
@@ -52,18 +50,22 @@ namespace GStreamerD3D.Samples.WPF.D3D11
                 _playback = new Playback(windowHandle, _enableOverlay);
             }
         }
+
         private void VideoSink_OnBeginDraw(Element sink, GLib.SignalArgs args)
         {        
             var sharedHandle = _D3D11Scene.GetSharedHandle();
             _ = sink.Emit("draw", sharedHandle, (UInt32)2, (UInt64)0, (UInt64)0);
         }
+
         private void CompositionTarget_Rendering(object sender, EventArgs e)
         {
             InvalidateD3DImage();
         }
+
         private void InvalidateD3DImage()
         {
             _d3DImageEx.Lock();
+
             _d3DImageEx.AddDirtyRect(new Int32Rect()
             {
                 X = 0,
@@ -71,13 +73,21 @@ namespace GStreamerD3D.Samples.WPF.D3D11
                 Height = _d3DImageEx.PixelHeight,
                 Width = _d3DImageEx.PixelWidth
             });
+
             _d3DImageEx.Unlock();
         }
+
         protected override void OnClosed(EventArgs e)
         {
             base.OnClosed(e);
-            _playback.Cleanup();
+            Dispose();
             System.Windows.Application.Current.Shutdown();
+        }
+
+        public void Dispose()
+        {
+            _playback.Cleanup();
+            _D3D11Scene.Dispose();
         }
     }
 }

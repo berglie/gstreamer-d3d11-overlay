@@ -7,6 +7,7 @@ namespace System { namespace Windows { namespace Interop
 	{
 		InitD3D9(GetDesktopWindow());
 	}
+
 	IntPtr D3DImageEx::CreateBackBuffer(D3DResourceTypeEx resourceType, IntPtr pResource)
 	{
 		/* Check if the user just wants to clear the D3DImage backbuffer */
@@ -29,8 +30,10 @@ namespace System { namespace Windows { namespace Interop
 				{
 					::ID3D10Texture2D *pTexture2D = NULL;
 					/* Query for IUNKNOWN for ID3D10Texture2D */
-					if(FAILED(pUnk->QueryInterface(__uuidof(::ID3D10Texture2D), (void**)&pTexture2D)))
-						throw gcnew ArgumentException("Must pass a valid resource","pResource");
+					if (FAILED(pUnk->QueryInterface(__uuidof(::ID3D10Texture2D), (void**)&pTexture2D)))
+					{
+						throw gcnew ArgumentException("Must pass a valid resource", "pResource");
+					}						
 
 					/* Get the texture description.  This is needed to recreate
 					 * the surface in the 9Ex device */
@@ -50,8 +53,10 @@ namespace System { namespace Windows { namespace Interop
 					::ID3D11Texture2D *pTexture2D = NULL;
 
 					/* Query for IUNKNOWN for ID3D11Texture2D */
-					if(FAILED(pUnk->QueryInterface(__uuidof(::ID3D11Texture2D), (void**)&pTexture2D)))
-						throw gcnew ArgumentException("Must pass a valid resource","pResource");
+					if (FAILED(pUnk->QueryInterface(__uuidof(::ID3D11Texture2D), (void**)&pTexture2D)))
+					{
+						throw gcnew ArgumentException("Must pass a valid resource", "pResource");
+					}						
 
 					/* Get the texture description.  This is needed to recreate
 					 * the surface in the 9Ex device */
@@ -81,28 +86,34 @@ namespace System { namespace Windows { namespace Interop
 		IDirect3DSurface9* pSurface;
 		
 		/* Get the shared handle for the given resource */
-		if(FAILED(GetSharedHandle(pUnkResource, &hSharedHandle)))
+		if (FAILED(GetSharedHandle(pUnkResource, &hSharedHandle)))
+		{
 			throw gcnew Exception("Could not aquire shared resource handle");
+		}			
 
 		/* Get the shared surface.  In this case its really a texture =X */
-		if(FAILED(GetSharedSurface(hSharedHandle, (void**)&pTexture, width, height, format)))
+		if (FAILED(GetSharedSurface(hSharedHandle, (void**)&pTexture, width, height, format)))
+		{
 			throw gcnew Exception("Could not create shared resource");
+		}			
 
 		/* Get surface level 0, which we need for the D3DImage */
 		if (FAILED(pTexture->GetSurfaceLevel(0, &pSurface)))
+		{
 			throw gcnew Exception("Could not get surface level");
+		}			
 
 		/* Done with the texture */
 		pTexture->Release();
 
-		m_backBuffer = IntPtr(pSurface);
+		_backBuffer = IntPtr(pSurface);
 
-		return m_backBuffer;
+		return _backBuffer;
 	}
 	 
 	IntPtr D3DImageEx::GetBackbuffer()
 	{
-		return m_backBuffer;
+		return _backBuffer;
 	}
 
 	D3DFORMAT D3DImageEx::ConvertDXGIToD3D9Format(DXGI_FORMAT format)
@@ -130,8 +141,9 @@ namespace System { namespace Windows { namespace Interop
 
 		/* Convert the DXGI format to a D3D9 format */
 		if ((D3D9Format = ConvertDXGIToD3D9Format(format)) == D3DFMT_UNKNOWN)
-			/* We're boned =X */
+		{
 			return E_INVALIDARG;
+		}
 
 		HRESULT hr = S_OK;
 		IDirect3DTexture9** ppTexture = (IDirect3DTexture9**)ppUnknown;
@@ -139,12 +151,15 @@ namespace System { namespace Windows { namespace Interop
 		/* Create the texture locally, but provide the shared handle.
 		 * This doesn't really create a new texture, but simply
 		 * pulls the D3D10/11 resource in the 9Ex device */
-		hr = m_D3D9Device->CreateTexture( width, height, 1,
-										  D3DUSAGE_RENDERTARGET,
-										  D3D9Format,
-										  D3DPOOL_DEFAULT,
-										  ppTexture,
-										  &hSharedHandle );
+		hr = _D3D9Device->CreateTexture( 
+			width,
+			height,
+			1,
+			D3DUSAGE_RENDERTARGET,
+			D3D9Format,
+			D3DPOOL_DEFAULT,
+			ppTexture,
+			&hSharedHandle);
 
 		return hr;
 	}
@@ -157,7 +172,9 @@ namespace System { namespace Windows { namespace Interop
 		IDXGIResource* pSurface;
 
 		if (FAILED(hr = pUnknown->QueryInterface(__uuidof(IDXGIResource), (void**)&pSurface)))
+		{
 			return hr;
+		}		
 
 		hr = pSurface->GetSharedHandle(pHandle);
 		pSurface->Release();
@@ -170,17 +187,20 @@ namespace System { namespace Windows { namespace Interop
 		HRESULT hr;
 
 		IDirect3D9Ex * d3D9;
+
 		Direct3DCreate9Ex( D3D_SDK_VERSION, &d3D9 );
 
-		m_D3D9 = d3D9;
+		_D3D9 = d3D9;
 
-		if (!m_D3D9)
+		if (!_D3D9)
 			return E_FAIL;
 
-		m_D3D9 = d3D9;
+		_D3D9 = d3D9;
 
 		D3DPRESENT_PARAMETERS		d3dpp;
+
 		ZeroMemory(&d3dpp, sizeof(d3dpp));
+
 		d3dpp.Windowed				= TRUE;
 		d3dpp.SwapEffect			= D3DSWAPEFFECT_DISCARD;
 		d3dpp.hDeviceWindow			= hWnd;
@@ -188,7 +208,7 @@ namespace System { namespace Windows { namespace Interop
 
 		IDirect3DDevice9Ex *d3D9Device;
 
-		hr = m_D3D9->CreateDeviceEx(D3DADAPTER_DEFAULT,
+		hr = _D3D9->CreateDeviceEx(D3DADAPTER_DEFAULT,
 									D3DDEVTYPE_HAL,
 									hWnd,
 									D3DCREATE_HARDWARE_VERTEXPROCESSING | D3DCREATE_MULTITHREADED | D3DCREATE_FPU_PRESERVE,
@@ -197,9 +217,11 @@ namespace System { namespace Windows { namespace Interop
 									&d3D9Device);
 
 		if (FAILED(hr))
+		{
 			return hr;
+		}			
 
-		m_D3D9Device = d3D9Device;
+		_D3D9Device = d3D9Device;
 
 		return hr;
 	}
