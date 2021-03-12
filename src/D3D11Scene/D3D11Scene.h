@@ -18,19 +18,20 @@ namespace D3D11Scene {
 	{
 	public:		
 		D3D11TestScene(unsigned int width, unsigned int height);
+		~D3D11TestScene() { Release(); }
 		HANDLE sharedHandle;
 		IntPtr GetSharedHandle();
 		IntPtr GetRenderTarget();
-
+		void Release();
 	private:
-		ID3D11Device*              device;
-		ID3D11Texture2D*			sharedTexture;
-		IDXGIFactory2* factory;
-		ID3D11DeviceContext* context;
-		IDXGIKeyedMutex* keyedMutex;
-		DXGI_FORMAT format = DXGI_FORMAT_B8G8R8A8_UNORM;
-		UINT miscFlags = 0;
-		static char* textureFormat = nullptr;
+		ID3D11Device* _device;
+		ID3D11Texture2D* _sharedTexture;
+		IDXGIFactory2* _factory;
+		ID3D11DeviceContext* _context;
+		IDXGIKeyedMutex* _keyedMutex;
+		DXGI_FORMAT _format = DXGI_FORMAT_B8G8R8A8_UNORM;
+		UINT _miscFlags = 0;
+		static char* _textureFormat = nullptr;
 
 	private:		
 		HRESULT PrepareSharedTexture(unsigned int width, unsigned int height, DXGI_FORMAT format, UINT miscFlags);

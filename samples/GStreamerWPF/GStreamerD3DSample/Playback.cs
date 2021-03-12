@@ -15,15 +15,18 @@ namespace GStreamerD3D.Samples.WPF.D3D11
 
 		private Pipeline _pipeline;
 		private MainLoop _mainLoop;
+        private Thread _mainGlibThread;
 		private Element _uriDecodeBin, _audioConvert, _videoConvert;
 		private Element _audioSink, _videoSink;
+        private VideoOverlayAdapter _adapter;
 		private IntPtr _handle;
 
 		private const bool _enableAudio = false;
 		private const string _videoDecoder = "d3d11h264dec"; // This decoder will reduce CPU usage significantly
 
-		private bool _enableOverlay = false;
+		private bool _enableOverlay;
 		private string _source = "http://samples.mplayerhq.hu/V-codecs/h264/interlaced_crop.mp4";
+        
 
 		public Playback(IntPtr hwnd, bool enableOverlay, string gstDebug = "")
 		{
@@ -39,20 +42,23 @@ namespace GStreamerD3D.Samples.WPF.D3D11
 			CreatePipeline();
 
 			var ret = _pipeline.SetState(State.Playing);
+
 			if (ret == StateChangeReturn.Failure)
 			{
 				Log("Unable to set the pipeline to the playing state.", LogLevelFlags.Error);
 				return;
 			}
 		}
+
 		public OnDrawReceivedEventHandler OnDrawSignalReceived;
-		public void InitGst()
+
+        public void InitGst()
 		{
 			Gst.Application.Init();
 			GtkSharp.GstreamerSharp.ObjectManager.Initialize();
 			_mainLoop = new MainLoop();
-			var mainGlibThread = new Thread(_mainLoop.Run);
-			mainGlibThread.Start();
+			_mainGlibThread = new Thread(_mainLoop.Run);
+			_mainGlibThread.Start();
 		}
 
 		private void CreatePipeline()
@@ -63,7 +69,6 @@ namespace GStreamerD3D.Samples.WPF.D3D11
 			_pipeline.Bus.AddSignalWatch();
 			_pipeline.Bus.Message += OnBusMessage;
 			_pipeline.AutoFlushBus = true;
-			_pipeline.Bus.Dispose();
 
 			if (!_enableOverlay)
 			{
@@ -115,22 +120,32 @@ namespace GStreamerD3D.Samples.WPF.D3D11
 				}
 
 				var ret = newPad.Link(sinkPad);
-				if (ret != PadLinkReturn.Ok)
-					Log($"Type is {newPadType} but link failed", LogLevelFlags.Error);
+
+                if (ret != PadLinkReturn.Ok)
+                {
+                    Log($"Type is {newPadType} but link failed", LogLevelFlags.Error);
+				}
+					
 				sinkPad.Dispose();
 			}
 			else if (newPadType.StartsWith("video/x-raw"))
 			{
 				Pad sinkPad = _videoConvert.GetStaticPad("sink");
 				Log($"Received new pad '{newPad.Name}' from '{ src.Name}':", LogLevelFlags.Debug);
+
 				if (sinkPad.IsLinked)
 				{
 					Log("We are already linked, ignoring", LogLevelFlags.Warning);
 					return;
 				}
+
 				var ret = newPad.Link(sinkPad);
-				if (ret != PadLinkReturn.Ok)
-					Log($"Type is {newPadType} but link failed", LogLevelFlags.Error);
+
+                if (ret != PadLinkReturn.Ok)
+                {
+                    Log($"Type is {newPadType} but link failed", LogLevelFlags.Error);
+				}
+					
 				sinkPad.Dispose();
 			}
 			else
@@ -138,26 +153,26 @@ namespace GStreamerD3D.Samples.WPF.D3D11
 				Log($"It has type '{newPadType}' which is not raw audio or video. Ignoring.", LogLevelFlags.Debug);
 				return;
 			}
+
 			newPadCaps.Dispose();
 			newPadStruct.Dispose();
 			newPad.Dispose();
 		}
+
 		private void OnBusSyncMessage(object o, SyncMessageArgs sargs)
 		{
-			Bus bus = o as Bus;
-			Gst.Message msg = sargs.Message;
+			Message msg = sargs.Message;
 
 			if (!Gst.Video.Global.IsVideoOverlayPrepareWindowHandleMessage(msg))
 			{
-				bus.Dispose();
 				msg.Dispose();
 				return;
 			}
 
 			Element src = msg.Src as Element;
+
 			if (src == null)
 			{
-				bus.Dispose();
 				msg.Dispose();
 				return;
 			}
@@ -172,21 +187,24 @@ namespace GStreamerD3D.Samples.WPF.D3D11
 			}
 
 			Element overlay = (_pipeline)?.GetByInterface(VideoOverlayAdapter.GType);
-			var _adapter = new VideoOverlayAdapter(overlay.Handle);
+
+			_adapter = new VideoOverlayAdapter(overlay.Handle);
 			_adapter.WindowHandle = _handle;
 			_adapter.HandleEvents(true);
 
-			bus.Dispose();
-			msg.Dispose();
+			msg?.Dispose();
 			overlay?.Dispose();
 			src?.Dispose();
 		}
+	
 		private static bool FilterVisFeatures(PluginFeature feature)
 		{
-			if (!(feature is ElementFactory))
-				return false;
+            if (!(feature is ElementFactory))
+            {
+                return false;
+			}
 
-			var factory = (ElementFactory)feature;
+            var factory = (ElementFactory)feature;
 
 			return (factory.GetMetadata(Gst.Constants.ELEMENT_METADATA_KLASS).ToLower().Contains("codec/decoder")) || (factory.GetMetadata(Gst.Constants.ELEMENT_METADATA_KLASS).ToLower().Contains("sink/video"));
 		}
@@ -194,22 +212,30 @@ namespace GStreamerD3D.Samples.WPF.D3D11
         {
 			var registry = Gst.Registry.Get();
 			var pluginList = registry.FeatureFilter(FilterVisFeatures, false);
+
 			// First we find the current primary decoders
 			var primaryPlugins = pluginList.Where(plugin => plugin.Rank == (uint)Rank.Primary);
+
 			// And then downrank them 
 			foreach (var plugin in primaryPlugins)
 			{
 				--plugin.Rank;
 			}
+
 			// Then we set our plugin to the primary rank
 			PluginFeature d3d11Plugin = pluginList.FirstOrDefault(plugin => plugin.Name == decoderName);
-			d3d11Plugin.Rank = (uint)Rank.Primary;
-		}
+
+            if (d3d11Plugin != null)
+            {
+                d3d11Plugin.Rank = (uint)Rank.Primary;
+            }
+        }
 		protected bool CreateElements()
 		{
 			try
 			{
 				_videoSink = ElementFactory.Make("d3d11videosink", "d3d11videosink0");
+
 				if (_enableOverlay)
 				{
 					_videoSink["draw-on-shared-texture"] = true;
@@ -246,52 +272,51 @@ namespace GStreamerD3D.Samples.WPF.D3D11
 		}
 
 		private void OnBusMessage(object o, MessageArgs margs)
-		{
-			try
-			{
-				Bus bus = o as Bus;
-				Message message = margs.Message;
+        {
+            try
+            {
 
-				switch (message.Type)
-				{
-					case MessageType.Eos:
+                Message message = margs.Message;
 
-						Log("Replaying stream...", LogLevelFlags.Info);
+                switch (message.Type)
+                {
+                    case MessageType.Eos:
 
-						var ret = _pipeline.SetState(Gst.State.Ready);
+                        Log("Replaying stream...", LogLevelFlags.Info);
 
-						if (ret == StateChangeReturn.Async)
-							ret = _pipeline.GetState(out var state, out var pending, Gst.Constants.SECOND * 10L);
+                        var ret = _pipeline.SetState(Gst.State.Ready);
 
-						if (ret == StateChangeReturn.Success)
-						{
-							ret = _pipeline.SetState(Gst.State.Playing);
-							if (ret == StateChangeReturn.Async)
-								ret = _pipeline.GetState(out var state, out var pending, Gst.Constants.SECOND * 10L);
-						}
-						break;
-					case MessageType.Error:
-						message.ParseError(out GException err, out string debug);
-						if (debug == null)
-						{
-							debug = "none";
-						}
-						Log($"Error! Bus message: {debug}", LogLevelFlags.Error, err);
-						if (err.Code == 3)
-						{
-							System.Windows.Application.Current.Dispatcher.InvokeShutdown();
-						}
-						break;
-				}
+                        if (ret == StateChangeReturn.Async)
+                            ret = _pipeline.GetState(out var state, out var pending, Gst.Constants.SECOND * 10L);
 
-				message?.Dispose();
-				bus?.Dispose();
-			}
-			catch (Exception ex)
-			{
-				Log("Bus message error.", LogLevelFlags.Error, ex);
-			}
-		}
+                        if (ret == StateChangeReturn.Success)
+                        {
+                            ret = _pipeline.SetState(Gst.State.Playing);
+                            if (ret == StateChangeReturn.Async)
+                                ret = _pipeline.GetState(out var state, out var pending, Gst.Constants.SECOND * 10L);
+                        }
+                        break;
+                    case MessageType.Error:
+                        message.ParseError(out GException err, out string debug);
+                        if (debug == null)
+                        {
+                            debug = "none";
+                        }
+                        Log($"Error! Bus message: {debug}", LogLevelFlags.Error, err);
+                        if (err.Code == 3)
+                        {
+                            System.Windows.Application.Current.Dispatcher.InvokeShutdown();
+                        }
+                        break;
+                }
+
+            }
+            catch (Exception ex)
+            {
+                Log("Bus message error.", LogLevelFlags.Error, ex);
+            }
+        }
+
 		private void VideoSink_OnBeginDraw(object o, GLib.SignalArgs args)
 		{
 			OnDrawSignalReceived?.Invoke((Element)o, args);
@@ -333,13 +358,33 @@ namespace GStreamerD3D.Samples.WPF.D3D11
 				_log.Error($"Log error: {ex.Message}", ex);
 			}
 		}
+
 		internal void Cleanup()
 		{
 			try
 			{
+                Log("Cleaning up pipeline..", LogLevelFlags.Info);
+
+                _adapter?.HandleEvents(false);
+				_videoSink?.Disconnect("begin-draw", VideoSink_OnBeginDraw);
+
+                if (_pipeline != null)
+                {
+                    _pipeline.Bus.Message -= OnBusMessage;
+                    _pipeline.Bus.SyncMessage -= OnBusSyncMessage;
+                }
+
+                if (_uriDecodeBin != null)
+                {
+                    _uriDecodeBin.PadAdded -= OnPadAdded;
+                }
+
 				_pipeline?.SetState(State.Null);
 				_pipeline?.Dispose();
 				_mainLoop?.Quit();
+
+				GC.Collect();
+                GC.WaitForPendingFinalizers();
 			}
 			catch (Exception ex)
 			{

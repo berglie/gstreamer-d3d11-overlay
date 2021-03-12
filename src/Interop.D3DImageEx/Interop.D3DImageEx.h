@@ -30,12 +30,12 @@ namespace System { namespace Windows { namespace Interop
 		IntPtr CreateBackBuffer(D3DResourceTypeEx resourceType, IntPtr pResource);
 		IntPtr GetBackbuffer();
 	private:
-		static IDirect3D9Ex*               m_D3D9;
-		static IDirect3DDevice9Ex*         m_D3D9Device;
-		static IntPtr m_backBuffer;
+		static IDirect3D9Ex* _D3D9;
+		static IDirect3DDevice9Ex* _D3D9Device;
+		static IntPtr _backBuffer;
 		static D3DFORMAT ConvertDXGIToD3D9Format(DXGI_FORMAT format);
 		static HRESULT GetSharedSurface(HANDLE hSharedHandle, void** ppUnknown, UINT width, UINT height, DXGI_FORMAT format);
-		static HRESULT GetSharedHandle(IUnknown *pUnknown, HANDLE * pHandle);
+		static HRESULT GetSharedHandle(IUnknown* pUnknown, HANDLE* pHandle);
 		static HRESULT InitD3D9(HWND hWnd);
 	};
 }}}
